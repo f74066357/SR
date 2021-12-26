@@ -5,6 +5,7 @@ import random
 import torchvision.transforms.functional as FT
 import torch
 import math
+import numpy as np
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -124,14 +125,16 @@ class ImageTransforms(object):
         self.lr_img_type = lr_img_type
         self.hr_img_type = hr_img_type
 
-        assert self.split in {'train', 'test'}
-
     def __call__(self, img):
         """
         :param img: a PIL source image from which the HR image will be cropped, and then downsampled to create the LR image
         :return: LR and HR images in the specified format
         """
 
+        # Important!! padding
+        if img.width <= self.crop_size or img.height <= self.crop_size:
+            img = padding(img, self.crop_size)
+        
         # Crop
         if self.split == 'train':
             # Take a random fixed-size crop of the image, which will serve as the high-resolution (HR) image
@@ -220,3 +223,12 @@ def adjust_learning_rate(optimizer, shrink_factor):
     for param_group in optimizer.param_groups:
         param_group['lr'] = param_group['lr'] * shrink_factor
     print("The new learning rate is %f\n" % (optimizer.param_groups[0]['lr'],))
+
+def padding(img, crop_size):
+    w, h = img.size
+    max_h = np.max([h, crop_size])
+    max_w = np.max([w, crop_size])
+    hp = int((max_h - h) / 2)
+    wp = int((max_w - w) / 2)
+    pad = [wp, hp, wp, hp]
+    return FT.pad(img, pad, 0, 'constant')

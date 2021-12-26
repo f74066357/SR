@@ -5,11 +5,16 @@ from torch import nn
 from models import SRResNet
 from datasets import SRDataset
 from utils import *
+import os
+
+checkpoint_dir = 'results'
+if not os.path.isdir(checkpoint_dir):
+    os.mkdir(checkpoint_dir)
 
 # Data parameters
 data_folder = './'  # folder with JSON data files
 crop_size = 96  # crop size of target HR images
-scaling_factor = 4  # the scaling factor for the generator; the input LR images will be downsampled from the target HR images by this factor
+scaling_factor = 3  # the scaling factor for the generator; the input LR images will be downsampled from the target HR images by this factor
 
 # Model parameters
 large_kernel_size = 9  # kernel size of the first and last convolutions which transform the inputs and outputs
@@ -19,9 +24,9 @@ n_blocks = 16  # number of residual blocks
 
 # Learning parameters
 checkpoint = None  # path to model checkpoint, None if none
-batch_size = 16  # batch size
+batch_size = 32  # batch size
 start_epoch = 0  # start at this epoch
-iterations = 1e6  # number of training iterations
+iterations = 1e4  # number of training iterations
 workers = 4  # number of workers for loading data in the DataLoader
 print_freq = 500  # print training status once every __ batches
 lr = 1e-4  # learning rate
@@ -57,15 +62,22 @@ def main():
     criterion = nn.MSELoss().to(device)
 
     # Custom dataloaders
-    train_dataset = SRDataset(data_folder,
-                              split='train',
+    train_dataset = SRDataset(split='train',
                               crop_size=crop_size,
                               scaling_factor=scaling_factor,
                               lr_img_type='imagenet-norm',
                               hr_img_type='[-1, 1]')
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=workers,
                                                pin_memory=True)  # note that we're passing the collate function here
+    val_dataset = SRDataset(split='val',
+                            crop_size=0,
+                            scaling_factor=scaling_factor,
+                            lr_img_type='imagenet-norm',
+                            hr_img_type='[-1, 1]')
 
+    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=1, shuffle=True, num_workers=workers,
+                                             pin_memory=True)
+    
     # Total number of epochs to train for
     epochs = int(iterations // len(train_loader) + 1)
 
@@ -88,7 +100,6 @@ def main():
 def train(train_loader, model, criterion, optimizer, epoch):
     """
     One epoch's training.
-
     :param train_loader: DataLoader for training data
     :param model: model
     :param criterion: content loss function (Mean Squared-Error loss)
@@ -138,13 +149,13 @@ def train(train_loader, model, criterion, optimizer, epoch):
         start = time.time()
 
         # Print status
-        if i % print_freq == 0:
-            print('Epoch: [{0}][{1}/{2}]----'
-                  'Batch Time {batch_time.val:.3f} ({batch_time.avg:.3f})----'
-                  'Data Time {data_time.val:.3f} ({data_time.avg:.3f})----'
-                  'Loss {loss.val:.4f} ({loss.avg:.4f})'.format(epoch, i, len(train_loader),
-                                                                    batch_time=batch_time,
-                                                                    data_time=data_time, loss=losses))
+        # if i % print_freq == 0:
+        print('Epoch: [{0}][{1}/{2}]----'
+                'Batch Time {batch_time.val:.3f} ({batch_time.avg:.3f})----'
+                'Data Time {data_time.val:.3f} ({data_time.avg:.3f})----'
+                'Loss {loss.val:.4f} ({loss.avg:.4f})'.format(epoch, i, len(train_loader),
+                                                                batch_time=batch_time,
+                                                                data_time=data_time, loss=losses))
     del lr_imgs, hr_imgs, sr_imgs  # free some memory since their histories may be stored
 
 

@@ -4,14 +4,15 @@ import json
 import os
 from PIL import Image
 from utils import ImageTransforms
-
+import glob
+import re
 
 class SRDataset(Dataset):
     """
     A PyTorch Dataset to be used by a PyTorch DataLoader.
     """
 
-    def __init__(self, data_folder, split, crop_size, scaling_factor, lr_img_type, hr_img_type, test_data_name=None):
+    def __init__(self, split, crop_size, scaling_factor, lr_img_type, hr_img_type, test_data_name=None):
         """
         :param data_folder: # folder with JSON data files
         :param split: one of 'train' or 'test'
@@ -22,17 +23,16 @@ class SRDataset(Dataset):
         :param test_data_name: if this is the 'test' split, which test dataset? (for example, "Set14")
         """
 
-        self.data_folder = data_folder
         self.split = split.lower()
         self.crop_size = int(crop_size)
         self.scaling_factor = int(scaling_factor)
         self.lr_img_type = lr_img_type
         self.hr_img_type = hr_img_type
         self.test_data_name = test_data_name
+        self.images=[]
 
-        assert self.split in {'train', 'test'}
-        if self.split == 'test' and self.test_data_name is None:
-            raise ValueError("Please provide the name of the test dataset!")
+        assert self.split in {'train', 'val','test'}
+        
         assert lr_img_type in {'[0, 255]', '[0, 1]', '[-1, 1]', 'imagenet-norm'}
         assert hr_img_type in {'[0, 255]', '[0, 1]', '[-1, 1]', 'imagenet-norm'}
 
@@ -40,14 +40,18 @@ class SRDataset(Dataset):
         # (If this is a test dataset, images are not cropped to a fixed size, so this variable isn't used)
         if self.split == 'train':
             assert self.crop_size % self.scaling_factor == 0, "Crop dimensions are not perfectly divisible by scaling factor! This will lead to a mismatch in the dimensions of the original HR patches and their super-resolved (SR) versions!"
-
+        
         # Read list of image-paths
-        if self.split == 'train':
-            with open(os.path.join(data_folder, 'train_images.json'), 'r') as j:
-                self.images = json.load(j)
+        if self.split == 'test':
+            for images in sorted(glob.glob("./data/testing_lr_images*.png"),key=lambda x:[int(c) if c.isdigit() else c for c in re.split(r'(\d+)', x)]):
+                self.images.append(images)
+            for dir_path, dir_names, file_names in os.walk('./data/testing_lr_images'):
+                for f in file_names:
+                    self.images.append(os.path.join(dir_path, f))
         else:
-            with open(os.path.join(data_folder, self.test_data_name + '_test_images.json'), 'r') as j:
-                self.images = json.load(j)
+            for dir_path, dir_names, file_names in os.walk(os.path.join('./data', self.split)):
+                for f in file_names:
+                    self.images.append(os.path.join(dir_path, f))
 
         # Select the correct set of transforms
         self.transform = ImageTransforms(split=self.split,
