@@ -143,9 +143,8 @@ class SRResNet(nn.Module):
         """
         super(SRResNet, self).__init__()
 
-        # Scaling factor must be 2, 4, or 8
+        # Scaling factor
         scaling_factor = int(scaling_factor)
-        assert scaling_factor in {2, 4, 8}, "The scaling factor must be 2, 4, or 8!"
 
         # The first convolutional block
         self.conv_block1 = ConvolutionalBlock(in_channels=3, out_channels=n_channels, kernel_size=large_kernel_size,
@@ -163,7 +162,7 @@ class SRResNet(nn.Module):
         # Upscaling is done by sub-pixel convolution, with each such block upscaling by a factor of 2
         n_subpixel_convolution_blocks = int(math.log2(scaling_factor))
         self.subpixel_convolutional_blocks = nn.Sequential(
-            *[SubPixelConvolutionalBlock(kernel_size=small_kernel_size, n_channels=n_channels, scaling_factor=2) for i
+            *[SubPixelConvolutionalBlock(kernel_size=small_kernel_size, n_channels=n_channels, scaling_factor=3) for i
               in range(n_subpixel_convolution_blocks)])
 
         # The last convolutional block
