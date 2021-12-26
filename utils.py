@@ -137,11 +137,27 @@ class ImageTransforms(object):
         
         # Crop
         if self.split == 'train':
+            if img.width - self.crop_size <= 1:
+                left = 0
+            else:
+                left = random.randint(1, img.width - self.crop_size)
+            if img.height - self.crop_size <= 1:
+                top = 0
+            else:
+                top = random.randint(1, img.height - self.crop_size)
             # Take a random fixed-size crop of the image, which will serve as the high-resolution (HR) image
-            left = random.randint(1, img.width - self.crop_size)
-            top = random.randint(1, img.height - self.crop_size)
+            # left = random.randint(1, img.width - self.crop_size)
+            # top = random.randint(1, img.height - self.crop_size)
             right = left + self.crop_size
             bottom = top + self.crop_size
+            hr_img = img.crop((left, top, right, bottom))
+        elif self.split == 'val':
+            x_remainder = img.width % self.scaling_factor
+            y_remainder = img.height % self.scaling_factor
+            left = x_remainder // 2
+            top = y_remainder // 2
+            right = left + (img.width - x_remainder)
+            bottom = top + (img.height - y_remainder)
             hr_img = img.crop((left, top, right, bottom))
         else:
             # Take the largest possible center-crop of it such that its dimensions are perfectly divisible by the scaling factor
