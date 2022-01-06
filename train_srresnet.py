@@ -6,11 +6,21 @@ from models import SRResNet
 from datasets import SRDataset
 from utils import *
 import os
+import matplotlib.pyplot as plt
 
 checkpoint_dir = 'results'
 if not os.path.isdir(checkpoint_dir):
     os.mkdir(checkpoint_dir)
 
+pth_num = 0
+pth_dir = "pth_"+str(pth_num)+"/"
+while os.path.isdir(pth_dir):
+    pth_num = pth_num+1
+    pth_dir = "pth_"+str(pth_num)+"/"
+os.mkdir(pth_dir)
+
+history=[]
+    
 # Data parameters
 data_folder = './'  # folder with JSON data files
 crop_size = 96  # crop size of target HR images
@@ -26,10 +36,10 @@ n_blocks = 16  # number of residual blocks
 checkpoint = None  # path to model checkpoint, None if none
 batch_size = 32  # batch size
 start_epoch = 0  # start at this epoch
-iterations = 1e4  # number of training iterations
+iterations = 1e5  # number of training iterations
 workers = 4  # number of workers for loading data in the DataLoader
 print_freq = 500  # print training status once every __ batches
-lr = 1e-4  # learning rate
+lr = 1e-5  # learning rate
 grad_clip = None  # clip if gradients are exploding
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -94,8 +104,15 @@ def main():
         torch.save({'epoch': epoch,
                     'model': model,
                     'optimizer': optimizer},
-                   'checkpoint_srresnet.pth.tar')
-
+                   pth_dir+'checkpoint_srresnet.pth.tar')
+    
+    print(len(history))
+    # summarize history for accuracy
+    plt.plot(history)
+    plt.title('model loss')
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.savefig(pth_dir+'loss.png')    
 
 def train(train_loader, model, criterion, optimizer, epoch):
     """
@@ -111,7 +128,6 @@ def train(train_loader, model, criterion, optimizer, epoch):
     batch_time = AverageMeter()  # forward prop. + back prop. time
     data_time = AverageMeter()  # data loading time
     losses = AverageMeter()  # loss
-
     start = time.time()
 
     # Batches
@@ -156,6 +172,11 @@ def train(train_loader, model, criterion, optimizer, epoch):
                 'Loss {loss.val:.4f} ({loss.avg:.4f})'.format(epoch, i, len(train_loader),
                                                                 batch_time=batch_time,
                                                                 data_time=data_time, loss=losses))
+        # print((epoch+1)*i)
+        if(((epoch+1)*i)%8==0):
+            #print(float(loss.cpu()))
+            history.append(float(loss.cpu()))
+
     del lr_imgs, hr_imgs, sr_imgs  # free some memory since their histories may be stored
 
 
