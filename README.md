@@ -6,7 +6,7 @@
  - 14 testing images
 
 ## Dataset Preparation
-I split 291 images to 0.8: 0.2
+I split 291 images to 0.8: 0.2  
 232 for training set and 59 for validation set.
 
 ## Requirements
