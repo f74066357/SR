@@ -32,3 +32,4 @@ You can easily use the weight by modifying the path in ```inference.py```
 
 ## Reference:  
 https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Super-Resolution
+https://github.com/twtygqyy/pytorch-SRResNet
